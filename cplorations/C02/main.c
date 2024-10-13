@@ -54,7 +54,7 @@ char *welcome(char* hello, char* name) {
 	char *message = malloc(sizeof(char) * MAX_LIMIT);
 
 	// CREATE THE MESSAGE
-	sprintf(message, "%s %s", hello, name);
+	sprintf(message, "%s %s!", hello, name);
 
 	return message;
 }
