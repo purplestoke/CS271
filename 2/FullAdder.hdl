@@ -11,5 +11,12 @@ CHIP FullAdder {
         carry;   // Left bit of a + b + c
 
     PARTS:
-    //// Replace this comment with your code.
+    // FIRST HALF ADDER FOR A ^ B
+    HalfAdder(a=a, b=b, sum=sum1, carry=carry1);
+
+    // SECOND HALF ADDER FOR SUM1 ^ C
+    HalfAdder(a=sum1, b=c, sum=sum, carry=carry2); 
+
+    // OR GATE FOR CARRY OUT
+    Or(a=carry1, b=carry2, out=carry);
 }
