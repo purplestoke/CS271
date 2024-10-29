@@ -13,5 +13,11 @@ CHIP Bit {
     OUT out;
 
     PARTS:
-    //// Replace this comment with your code.
+    // MULTIPLEXER TO CONTROL WHAT FLOWS INTO THE D FLIP-FLOP
+    Mux(a=storedState, b=in, sel=load, out=muxOut);
+
+    // STORES CURRENT VALUE OF REGISTER, UPDATES EACH CLOCK CYCLE
+    DFF(in=muxOut , out=storedState, out=out );
+
+
 }

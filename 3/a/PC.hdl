@@ -10,9 +10,29 @@
  * else              out(t+1) = out(t)
  */
 CHIP PC {
-    IN in[16],inc, load, reset;
+    IN in[16], reset, load, inc;
     OUT out[16];
     
     PARTS:
-    //// Replace this comment with your code.
+    // ADDS 1 TO CURRENT OUTPUT WHEN b[0] IS TRUE AND ALL OTHER BITS IN b ARE FALSE
+    Add16(a=storedState, b[0]=true, b[1..15]=false, out=storedStateInc);
+
+    // CHOOSES BETWEEN outloop OR outLoopInc 
+    // CHOICE DETERMINED BY sel
+    Mux16(a=storedState, b=storedStateInc, sel=inc, out=t0);
+    
+    // CHOOSES BETWEEN t[0] AND THE NEW INPUT VALUE in
+    // CHOICE DETERMINED BY sel
+    Mux16(a=t0, b=in, sel=load, out=t1);
+
+    // CHOOSES BETWEEN t1 OR HARDCODED FALSE FOR A RESET
+    Mux16(a=t1, b=false, sel=reset, out=t2);
+
+    // LOADING LOGIC, DETERMINES WHETHER RAM8 SHOULD LOAD A NEW VALUE
+    // RAM8 ONLY LOADS A NEW VALUE IF load, inc, OR reset IS ACTIVE
+    Or(a=load, b=inc, out=loadOrInc);
+    Or(a=loadOrInc, b=reset, out=loadRAM);
+
+    // HOLDS THE FINAL STATE OF THE REGISTER OR COUNTER 
+    RAM8(in=t2, load=loadRAM, out=storedState, out=out);
 }
