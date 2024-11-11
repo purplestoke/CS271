@@ -24,6 +24,7 @@ int main(int argc, const char *argv[])
     exit(EXIT_FAILURE);
   }
 
+	// PARSE THE FILE 
 	parse(fin);
 
 	fclose(fin);
