@@ -27,10 +27,62 @@ CHIP CPU {
                          // the current program (reset==0).
 
     OUT outM[16],        // M value output
-        writeM,          // Write to M? 
+        writeM,          // Write to M?
         addressM[15],    // Address in data memory (of M)
         pc[15];          // address of next instruction
 
     PARTS:
-	//// Replace this comment with your code.
+    // DETERMINE INSTRUCTION TYPE
+    // CHECKS MSB OF INSTRUCTION TO CLASSIFY AN A OR C INSTRUCTION
+    Not(in=instruction[15], out=Ainstruction);
+    Not(in=Ainstruction, out=Cinstruction);
+
+    // DETERMINE WHETHER TO LOAD THE A REGISTER
+    // CHECKS IF A C-INSTRUCTION AND IF THE ALU RESULT SHOULD BE STORED
+    // IN THE A REGISTER
+    And(a=Cinstruction, b=instruction[5], out=ALUtoA);
+    Mux16(a=instruction, b=ALUout, sel=ALUtoA, out=AregIn);
+
+    // LOADS A REGISTER WHEN NECESSARY
+    // LOADS A REGISTER DURING AN A-INSTRUCTION OR WHEN THE ALU RESULT IS
+    // DIRECTED TO IT
+    Or(a=Ainstruction, b=ALUtoA, out=loadA);
+    ARegister(in=AregIn, load=loadA, out=Aout);
+
+    // SELECT A OR M FOR ALU INPUT
+    // DETERMINES WHETHER THE ALU OPERATES ON THE A REGISTER OR THE MEM VALUE
+    // BASED ON THE 'a' BIT IN THE C-INSTRUCTION
+    Mux16(a=Aout, b=inM, sel=instruction[12], out=AMout);
+
+    // UPDATES D REGISTER WHEN dest=d BIT IS SET IN C INSTRUCTION
+    And(a=Cinstruction, b=instruction[4], out=loadD);
+    DRegister(in=ALUout, load=loadD, out=Dout);
+
+    // PERFORMS ARITHMETIC OR LOGICAL OPERATION SET BY C INSTRUCTION
+    // ALU COMPUTES THE RESULT BASED ON THE CONTROL BITS IN THE C-INSTRUCTION
+    ALU(x=Dout, y=AMout, zx=instruction[11], nx=instruction[10],
+        zy=instruction[9], ny=instruction[8], f=instruction[7],
+        no=instruction[6], out=ALUout, zr=ZRout, ng=NGout);
+
+    // CONTROLS WRITES TO MEMORY
+    // WRITES DATA TO MEMORY IF SPECIFIED IN C-INSTRUCTION
+    // addressM IS SET TO THE A REGISTER AND outM IS SET TO THE ALU RESULT
+    Or16(a=false, b=Aout, out[0..14]=addressM);
+    Or16(a=false, b=ALUout, out=outM);
+    And(a=Cinstruction, b=instruction[3], out=writeM);
+
+    // HANDLES PROGRAM COUNTER BASED ON JUMP CONDITIONS IN C INSTRUCTION
+    // DETERMINES WHETHER THE PC SHOULD JUMP TO THE ADDRESS IN THE A REGISTER
+    // INCREMENT OR RESET
+    // JUMP CONDITIONS ARE EVALUATED USING THE ALU'S STATUS FLAGS
+    And(a=ZRout, b=instruction[1], out=jeq);
+    And(a=NGout, b=instruction[2], out=jlt);
+    Or(a=ZRout, b=NGout, out=zeroOrNeg);
+    Not(in=zeroOrNeg, out=positive);
+    And(a=positive, b=instruction[0], out=jgt);
+    Or(a=jeq, b=jlt, out=jle);
+    Or(a=jle, b=jgt, out=jumpToA);
+    And(a=Cinstruction, b=jumpToA, out=PCload);
+    Not(in=PCload, out=PCinC);
+    PC(in=Aout, inc=PCinC, load=PCload, reset=reset, out[0..14]=pc);
 }

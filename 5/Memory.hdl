@@ -4,19 +4,19 @@
 // File name: projects/5/Memory.hdl
 /**
  * The complete address space of the Hack computer's memory,
- * including RAM and memory-mapped I/O. 
+ * including RAM and memory-mapped I/O.
  * The chip facilitates read and write operations, as follows:
  *     Read:  out(t) = Memory[address(t)](t)
  *     Write: if load(t-1) then Memory[address(t-1)](t) = in(t-1)
- * In words: the chip always outputs the value stored at the memory 
- * location specified by address. If load=1, the in value is loaded 
- * into the memory location specified by address. This value becomes 
+ * In words: the chip always outputs the value stored at the memory
+ * location specified by address. If load=1, the in value is loaded
+ * into the memory location specified by address. This value becomes
  * available through the out output from the next time step onward.
  * Address space rules:
- * Only the upper 16K+8K+1 words of the Memory chip are used. 
- * Access to address>0x6000 is invalid. Access to any address in 
- * the range 0x4000-0x5FFF results in accessing the screen memory 
- * map. Access to address 0x6000 results in accessing the keyboard 
+ * Only the upper 16K+8K+1 words of the Memory chip are used.
+ * Access to address>0x6000 is invalid. Access to any address in
+ * the range 0x4000-0x5FFF results in accessing the screen memory
+ * map. Access to address 0x6000 results in accessing the keyboard
  * memory map. The behavior in these addresses is described in the Screen
  * and Keyboard chip specifications given in the lectures and the book.
  */
@@ -25,5 +25,26 @@ CHIP Memory {
     OUT out[16];
 
     PARTS:
-	//// Replace this comment with your code.
+    // SPLITS load SIGNAL INTO TWO OUTPUTS BASED ON MSB OF address
+    DMux(in=load, sel=address[14], a=loadRam, b=loadDevices);
+
+    // FURTHER SPLITS THE loadDevices SIGNAL INTO loadScreen BASED ON address[13]
+    // DETERMINES WHETHER TO LOAD THE SCREEN OR HANDLE OTHER DEVICES
+    DMux(in=loadDevices, sel=address[13], a=loadScreen);
+
+    // RAM MEMORY BLOCK FOR ADDRESSES 0x0000 TO 0x3FFF
+    RAM16K(in=in, load=loadRam, address=address[0..13], out=ramOut);
+
+    // SCREEN MEMORY FOR ADDRESS 0x4000 TO 0x5FFF
+    Screen(in=in, load=loadScreen, address=address[0..12], out=screenOut);
+
+    // KEYBOARD MEMORY FOR ADDRESS 0x6000
+    Keyboard(out=keyboardOut);
+
+    // SELECTS BETWEEN screenOut AND keyboardOut OUTPUTS BASED ON address[13]
+    // DETERMINES WHICH DEVICES'S OUTPUT IS PASSED TO devicesOut
+    Mux16(a=screenOut, b=keyboardOut, sel=address[13], out=devicesOut);
+
+    // COMBINES RAM Screen AND Keyboard OUTPUTS INTO A SINGLE OUTPUT BASED ON address[14]
+    Mux16(a=ramOut, b=devicesOut, sel=address[14], out=out);
 }
