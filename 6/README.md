@@ -2,7 +2,7 @@
 
 ## Overview
 
-This Hack Assembler translates Hack assembly language programs into machine code as specified in the *Nand2Tetris* course. The assembler supports the Hack instruction set, including both A-type and C-type instructions.
+This Hack Assembler translates Hack assembly language programs into machine code as specified in the Nand2Tetris course. The assembler supports the Hack instruction set, including both A-type and C-type instructions.
 
 ## Files
 
