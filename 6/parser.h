@@ -24,7 +24,8 @@
 typedef int16_t hack_addr;
 typedef int16_t opcode;
 
-enum instruction_type {
+enum instruction_type
+{
   INVALID_INSTRUCTION = -1,
   A_TYPE_INSTRUCTION,
   C_TYPE_INSTRUCTION,

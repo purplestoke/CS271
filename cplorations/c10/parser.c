@@ -89,83 +89,105 @@
  }
 
 
-   void add_predefined_symbols()
+ void add_predefined_symbols()
+ {
+   for (int i = 0; i < NUM_PREDEFINED_SYMBOLS; i++)
    {
-     for (int i = 0; i < NUM_PREDEFINED_SYMBOLS; i++)
-     {
-         symtable_insert(predefined_symbols[i].name, predefined_symbols[i].address);
-     }
+       symtable_insert(predefined_symbols[i].name, predefined_symbols[i].address);
+   }
+}
+
+ bool parse_A_instruction(const char *line, a_instruction *instr)
+ {
+   // ALLOCATE MEMORY FOR THE STRING, INCLUDING THE NULL TERMINATOR
+   char *s = (char *)malloc(strlen(line));
+   if (!s) {
+       perror("Failed to allocate memory for A-instruction");
+       return false;
+   }
+
+   strcpy(s, line + 1);
+
+   // CONVERT STRING TO A LONG INTEGER
+   char *s_end = NULL;
+   long result = strtol(s, &s_end, 10);
+
+   if (s == s_end) {
+       // CASE: LABEL
+       instr->is_addr = false;
+       instr->label = (char *)malloc(strlen(s) + 1);
+       if (!instr->label) {
+           perror("Failed to allocate memory for label");
+           free(s);
+           return false;
+       }
+       strcpy(instr->label, s);
+   } else if (*s_end != '\0') {
+       // CASE: INVALID LABEL
+       free(s);
+       return false;
+   } else {
+       // CASE: NUMERIC ADDRESS
+       instr->is_addr = true;
+       instr->address = (int16_t)result;
+   }
+
+   free(s);
+   return true;
  }
 
- bool parse_A_instruction(const char *line, a_instruction *instr) {
-     // ALLOCATE MEMORY FOR THE STRING
-     char *s = (char *)malloc(strlen(line));
-     strcpy(s, line + 1);
-
-     // CONVERT STRING TO LONG
-     char *s_end = NULL;
-     long result = strtol(s, &s_end, 10);
-
-     // CASE 1: LABEL (STRING)
-     if (s == s_end) {
-         instr->is_addr = false;
-         instr->label = (char *)malloc(strlen(s) + 1);
-         strcpy(instr->label, s);
-     }
-     // CASE 2: INVALID LABEL
-     else if (*s_end != '\0') {
-         free(s);
-         return false;
-     }
-     // CASE 3: NUMBER (ADDRESS)
-     else {
-         instr->is_addr = true;
-         instr->address = (int16_t)result;
-     }
-
-     free(s);
-     return true;
- }
 
  // FUNCTION TO PARSE C-TYPE INSTRUCTION
- void parse_C_instruction(char *line, c_instruction *instr) {
-     // INITIALIZE FIELDS TO DEFAULT VALUES
-     instr->jump = JMP_NULL;
-     instr->dest = DEST_NULL;
-     instr->comp = COMP_INVALID;
-     instr->a = 0;
+ void parse_C_instruction(char *line, c_instruction *instr)
+ {
+   instr->jump = JMP_NULL;
+   instr->dest = DEST_NULL;
+   instr->comp = COMP_INVALID;
+   instr->a = 0;
 
-     // SPLIT THE LINE BY ';' TO SEPARATE comp/dest AND jump
-     char *comp_dest_part = strtok(line, ";");
-     char *jump_part = strtok(NULL, ";");
+   // SPLIT THE LINE BY ';' TO SEPERATE comp/dest AND jump
+   char *comp_dest_part = strtok(line, ";");
+   char *jump_part = strtok(NULL, ";");
 
-     // HANDLE NULL CASE FOR jump_part
-     if (jump_part != NULL) {
-         instr->jump = str_to_jumpid(jump_part);
-     }
+   if (jump_part != NULL)
+   {
+       instr->jump = str_to_jumpid(jump_part);
+   }
 
-     // SPLIT THE comp_dest_part BY '=' TO SEPARATE dest AND comp
-     char *dest_part = strtok(comp_dest_part, "=");
-     char *comp_part = strtok(NULL, "=");
+   char *dest_part = strtok(comp_dest_part, "=");
+   char *comp_part = strtok(NULL, "=");
 
-     // IF comp_part IS NULL, dest_part CONTAINS THE COMPUTATION
-     if (comp_part == NULL) {
-         comp_part = dest_part;
-         dest_part = NULL;
-     }
+   if (comp_part == NULL)
+   {
+       comp_part = dest_part;
+       dest_part = NULL;
+   }
 
-     // SET THE dest FIELD USING str_to_destid
-     if (dest_part != NULL) {
-         instr->dest = str_to_destid(dest_part);
-     }
+   if (dest_part != NULL)
+   {
+       instr->dest = str_to_destid(dest_part);
+   }
 
-     // SET THE comp FIELD AND THE a BIT USING str_to_compid
-     if (comp_part != NULL) {
-         int a_bit = 0;
-         instr->comp = str_to_compid(comp_part, &a_bit);
-         instr->a = (opcode)a_bit;
-     }
+   if (comp_part != NULL)
+   {
+       int a_bit = 0;
+       instr->comp = str_to_compid(comp_part, &a_bit);
+       instr->a = (opcode)a_bit;
+   }
  }
+
+
+ opcode instruction_to_opcode(c_instruction instr)
+ {
+   opcode op = 0;
+   op |= (7 << 13);
+   op |= (instr.a << 12);
+   op |= (instr.comp << 6);
+   op |= (instr.dest << 3);
+   op |= instr.jump;
+   return op;
+ }
+
 
 
 /* Function: parse
@@ -176,7 +198,8 @@
  *
  * returns: nothing
  */
- int parse(FILE *file, instruction *instructions) {
+ int parse(FILE *file, instruction *instructions)
+ {
      // LOAD PREDEFINED SYMBOLS INTO THE SYMBOL TABLE
      add_predefined_symbols();
 
@@ -271,4 +294,50 @@
      }
      // RETURN THE NUMBER OF INSTRUCTIONS PARSED
      return instr_num;
+ }
+
+
+ void assemble(const char *file_name, instruction *instructions, int num_instructions)
+ {
+   char output_file_name[256];
+   snprintf(output_file_name, sizeof(output_file_name), "%s.hack", file_name);
+
+   FILE *output_file = fopen(output_file_name, "w");
+   if (!output_file) {
+       perror("Error opening output file");
+       exit(EXIT_FAILURE);
+   }
+
+   int next_available_address = 16;
+
+   for (int i = 0; i < num_instructions; i++) {
+       instruction *instr = &instructions[i];
+       char opcode[17] = {0};
+
+       if (instr->type == A_TYPE_INSTRUCTION) {
+           int address;
+           if (!instr->a_instr.is_addr) {
+               address = symtable_lookup(instr->a_instr.label);
+               if (address == -1) {
+                   address = next_available_address++;
+                   symtable_insert(instr->a_instr.label, address);
+               }
+               free(instr->a_instr.label);
+           } else {
+               address = instr->a_instr.address;
+           }
+           for (int j = 15; j >= 0; j--) {
+               opcode[15 - j] = (address >> j) & 1 ? '1' : '0';
+           }
+       } else if (instr->type == C_TYPE_INSTRUCTION) {
+           int binary_opcode = instruction_to_opcode(instr->c_instr);
+           for (int j = 15; j >= 0; j--) {
+               opcode[15 - j] = (binary_opcode >> j) & 1 ? '1' : '0';
+           }
+       }
+
+       fprintf(output_file, "%s\n", opcode);
+   }
+
+   fclose(output_file);
  }

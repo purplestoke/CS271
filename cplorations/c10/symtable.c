@@ -1,6 +1,25 @@
 #include "symtable.h"
+#include <string.h>
 
 Symbol *hashArray[SYMBOL_TABLE_SIZE] = {NULL};
+
+
+typedef struct {
+    char *name;
+    int16_t address;
+} symbol;
+
+#define MAX_SYMBOLS 1000
+
+// LOOKUP FUNCTION
+int symtable_lookup(const char *symbol_name) {
+    Symbol *result = symtable_find((char *)symbol_name);
+    if (result != NULL) {
+        return result->addr;
+    }
+    return -1;
+}
+
 
 // HASH FUNCTION
 int hash(char *str) {
@@ -16,7 +35,7 @@ int hash(char *str) {
 // INSERT FUNCTION
 void symtable_insert(const char *key, hack_addr addr) {
     Symbol *item = (Symbol *)malloc(sizeof(Symbol));
-    item->name = strdup(key); // Use strdup to copy the string
+    item->name = strdup(key);
     item->addr = addr;
 
     int index = hash((char *)key);

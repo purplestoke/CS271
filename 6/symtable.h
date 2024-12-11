@@ -10,9 +10,10 @@
 
 typedef int16_t hack_addr;
 
-typedef struct Symbol {
-    char *name;
-    hack_addr addr;
+typedef struct Symbol
+{
+  char *name;
+  hack_addr addr;
 } Symbol;
 
 int hash(char *str);
